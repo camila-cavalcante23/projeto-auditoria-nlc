@@ -169,3 +169,91 @@ td {
   background-color: var(--warning-bg);
   color: var(--warning-text);
 }
+.results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border-left: 5px solid #4a47d1;
+}
+
+.btn-export-premium {
+  background: linear-gradient(135deg, #4a47d1 0%, #312e81 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(74, 71, 209, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-export-premium:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(74, 71, 209, 0.4);
+  filter: brightness(1.1);
+}
+
+.subtitle {
+  color: #666;
+  font-size: 0.9rem;
+  margin-top: 5px;
+}
+
+
+.status-badge.atencao {
+  background-color: #fff4e5;
+  color: #b76e00;
+  border: 1px solid #ffe2b7;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.vendor-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.vendor-cnpj {
+  font-size: 0.75rem;
+  color: #888;
+  font-weight: normal;
+}
+
+.audit-table td {
+  padding: 12px 15px;
+  vertical-align: middle;
+}
+
+
+.audit-table td:nth-child(5) {
+  font-size: 0.9rem;
+  color: #555;
+}
+.status-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.anomaly-text {
+  font-size: 0.7rem;
+  color: #d97706; 
+  font-weight: 500;
+  max-width: 150px;
+  line-height: 1.1;
+}
+
+
+.audit-table tr:has(.atencao) {
+  background-color: #ffffff;
+}

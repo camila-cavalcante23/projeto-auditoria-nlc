@@ -30,17 +30,15 @@ function App() {
     }
   };
 
-  
   const exportToCSV = () => {
     if (results.length === 0) return;
 
+    // Atualizado com novos cabeçalhos para o BI
+    const headers = "Arquivo;Fornecedor;CNPJ;Emissao;Valor;Aprovador;Status;Anomalias\n";
     
-    const headers = "Arquivo;Fornecedor;Valor;CNPJ;Status;Anomalias\n";
-    
-    // Mapeia os resultados para o formato de linha 
     const rows = results.map(res => {
       const status = res.anomalias === "[]" ? "Limpo" : "Atenção";
-      return `${res.arquivo};${res.FORNECEDOR};${res.VALOR_BRUTO};${res.CNPJ_FORNECEDOR};${status};${res.anomalias.replace(/;/g, ',')}`;
+      return `${res.arquivo};${res.FORNECEDOR};${res.CNPJ_FORNECEDOR};${res.DATA_EMISSAO};${res.VALOR_BRUTO};${res.APROVADO_POR};${status};${res.anomalias.replace(/;/g, ',')}`;
     }).join("\n");
 
     const blob = new Blob(["\ufeff" + headers + rows], { type: 'text/csv;charset=utf-8;' });
@@ -68,11 +66,11 @@ function App() {
             type="file" 
             style={{ display: 'none' }} 
             onChange={(e) => setFile(e.target.files[0])} 
-            accept=".zip"
+            accept=".zip,.txt"
           />
           <div className="upload-icon">☁️</div>
           <p className="file-name">
-            {file ? file.name : "Clique para selecionar o arquivo .zip"}
+            {file ? file.name : "Clique para selecionar arquivo .zip ou .txt"}
           </p>
         </label>
         
@@ -81,43 +79,58 @@ function App() {
           onClick={handleUpload} 
           disabled={loading || !file}
         >
-          {loading ? "Processando..." : "Iniciar Auditoria"}
+          {loading ? "Processando motor de IA..." : "Iniciar Auditoria"}
         </button>
       </div>
 
       {results.length > 0 && (
         <div className="results-container">
-          <div className="results-actions">
-            <h2>Resultados da Análise</h2>
-            
-            <button className="btn-export" onClick={exportToCSV}>
-              Exportar para Power BI (CSV)
+          <div className="results-header">
+            <div>
+              <h2>Relatório de Auditoria</h2>
+              <p className="subtitle">{results.length} documentos analisados pelo sistema híbrido</p>
+            </div>
+            <button className="btn-export-premium" onClick={exportToCSV}>
+              <span>📥</span> Exportar para Power BI
             </button>
           </div>
 
-          <div className="table-container">
-            <table>
+          <div className="table-responsive">
+            <table className="audit-table">
               <thead>
                 <tr>
                   <th>Arquivo</th>
-                  <th>Fornecedor</th>
-                  <th>Valor</th>
-                  <th>Status</th>
+                  <th>Fornecedor / CNPJ</th>
+                  <th>Emissão</th>
+                  <th>Valor Bruto</th>
+                  <th>Aprovador</th>
+                  <th>Status de Risco</th>
                 </tr>
               </thead>
               <tbody>
                 {results.map((res, i) => (
                   <tr key={i}>
                     <td>📄 {res.arquivo}</td>
-                    <td className="vendor-name">{res.FORNECEDOR}</td>
-                    <td className="value-cell">{res.VALOR_BRUTO}</td>
                     <td>
-                      {res.anomalias === "[]" ? (
-                        <span className="status-badge limpo">✔️ Limpo</span>
-                      ) : (
-                        <span className="status-badge atencao">⚠️ Atenção</span>
-                      )}
+                      <div className="vendor-info">
+                        <span className="vendor-name">{res.FORNECEDOR}</span>
+                        <span className="vendor-cnpj">{res.CNPJ_FORNECEDOR}</span>
+                      </div>
                     </td>
+                    <td>{res.DATA_EMISSAO}</td>
+                    <td className="value-cell">{res.VALOR_BRUTO}</td>
+                    <td>👤 {res.APROVADO_POR}</td>
+                   <td title={res.anomalias !== "[]" ? res.anomalias : "Nenhuma anomalia detectada"}>
+                 {res.anomalias === "[]" ? (
+                 <span className="status-badge limpo">✔️ Limpo</span>
+                      ) : (
+                   <div className="status-container">
+                   <span className="status-badge atencao">⚠️ Atenção</span>
+       
+                  <p className="anomaly-text">{res.anomalias.replace(/[\[\]']/g, '')}</p>
+                 </div>
+                   )}
+                  </td>
                   </tr>
                 ))}
               </tbody>

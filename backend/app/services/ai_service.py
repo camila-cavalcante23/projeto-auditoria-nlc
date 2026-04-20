@@ -8,7 +8,7 @@ load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 def extrair_dados_com_ia(texto_documento):
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini-1.5-flash-8b")
 
     try:
         response = model.generate_content(

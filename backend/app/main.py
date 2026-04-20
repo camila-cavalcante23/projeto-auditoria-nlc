@@ -2,7 +2,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import zipfile
 import io
-import time  
+import time 
 
 from app.services.ai_service import extrair_dados_com_ia
 from app.services.audit_service import AuditService
@@ -20,55 +20,58 @@ app.add_middleware(
 
 @app.post("/processar")
 async def processar_documentos(file: UploadFile = File(...)):
-    # Valida se o arquivo é um Zip
-    if not file.filename.endswith('.zip'):
-        raise HTTPException(status_code=400, detail="Arquivo deve ser .zip")
-
     audit = AuditService()
     resultados_finais = []
+    arquivos_para_processar = [] 
 
     try:
         content = await file.read()
-        with zipfile.ZipFile(io.BytesIO(content)) as z:
-            # Detecta arquivos no ZIP 
-            arquivos = [f for f in z.namelist() if not f.endswith('/')]
-            
-            print(f"--- Iniciando processamento de {len(arquivos)} arquivos ---")
-            
-            for index, nome_arquivo in enumerate(arquivos):
-                conteudo_binario = z.read(nome_arquivo)
-                
-                
-                texto, erro = ler_texto_seguro(conteudo_binario)
-                
-                if erro: 
-                    print(f"Erro em {nome_arquivo}: {erro}")
-                    continue
 
-               
-                print(f"Processando {nome_arquivo}... (Aguardando janela de cota)")
+        # CASO 1: É um arquivo ZIP
+        if file.filename.endswith('.zip'):
+            with zipfile.ZipFile(io.BytesIO(content)) as z:
+                for nome in z.namelist():
+                    if not nome.endswith('/'):
+                        arquivos_para_processar.append((nome, z.read(nome)))
+
+        # CASO 2: É um arquivo TXT individual
+        elif file.filename.endswith('.txt'):
+            arquivos_para_processar.append((file.filename, content))
+        
+        else:
+            raise HTTPException(status_code=400, detail="Formato não suportado. Envie .zip ou .txt")
+
+        print(f"--- Iniciando processamento de {len(arquivos_para_processar)} arquivo(s) ---")
+        
+        for index, (nome_arquivo, conteudo_binario) in enumerate(arquivos_para_processar):
+            texto, erro = ler_texto_seguro(conteudo_binario)
+            
+            if erro: 
+                print(f"Erro em {nome_arquivo}: {erro}")
+                continue
+
+            # Se for mais de um arquivo,  um tempo maior para a IA não bloquear
+            if len(arquivos_para_processar) > 1:
+                print(f"Aguardando janela de cota para {nome_arquivo}...")
                 time.sleep(15) 
             
-               
-                dados_extraidos = extrair_dados_com_ia(texto)
+            print(f"Enviando {nome_arquivo} para a IA...")
+            dados_extraidos = extrair_dados_com_ia(texto)
+            
+            if dados_extraidos:
+                anomalias = audit.detectar_anomalias(dados_extraidos, texto)
                 
-                if dados_extraidos:
-                    # Detecção de Anomalias 
-                    anomalias = audit.detectar_anomalias(dados_extraidos, texto)
-                    
-                  
-                    registro = {
-                        **dados_extraidos, 
-                        "arquivo": nome_arquivo, 
-                        "anomalias": str(anomalias),
-                        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
-                    }
-                    resultados_finais.append(registro)
-                    print(f"✅ [{index+1}/{len(arquivos)}] Sucesso: {nome_arquivo}")
-                else:
-                    print(f"❌ Falha na IA para: {nome_arquivo}")
+                registro = {
+                    **dados_extraidos, 
+                    "arquivo": nome_arquivo, 
+                    "anomalias": str(anomalias),
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+                }
+                resultados_finais.append(registro)
+                print(f" [{index+1}/{len(arquivos_para_processar)}] Sucesso!")
+            else:
+                print(f"Falha na IA para: {nome_arquivo}")
 
-        # Geração de CSV
         csv_data = gerar_csv_resultados(resultados_finais)
         
         return {
@@ -79,6 +82,5 @@ async def processar_documentos(file: UploadFile = File(...)):
         }
 
     except Exception as e:
-       
-        print(f"Erro: {e}")
-        raise HTTPException(status_code=500, detail="Erro interno")
+        print(f"Erro no servidor: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
