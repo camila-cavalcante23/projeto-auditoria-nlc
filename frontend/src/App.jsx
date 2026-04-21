@@ -15,8 +15,6 @@ function App() {
 
     try {
       const response = await axios.post('http://127.0.0.1:8000/processar', formData);
-      console.log("Dados que chegaram do Backend:", response.data);
-      
       if (response.data && response.data.resultados) {
         setResults(response.data.resultados);
       } else {
@@ -33,12 +31,13 @@ function App() {
   const exportToCSV = () => {
     if (results.length === 0) return;
 
-    // Atualizado com novos cabeçalhos para o BI
-    const headers = "Arquivo;Fornecedor;CNPJ;Emissao;Valor;Aprovador;Status;Anomalias\n";
+    const headers = "Arquivo;Fornecedor;CNPJ;Emissao;Valor;Aprovador;Score_Risco;Nivel_Risco;Anomalias\n";
     
     const rows = results.map(res => {
-      const status = res.anomalias === "[]" ? "Limpo" : "Atenção";
-      return `${res.arquivo};${res.FORNECEDOR};${res.CNPJ_FORNECEDOR};${res.DATA_EMISSAO};${res.VALOR_BRUTO};${res.APROVADO_POR};${status};${res.anomalias.replace(/;/g, ',')}`;
+      
+      const anomaliasTexto = res.anomalias.map(a => a.anomalia).join(" | ");
+      
+      return `${res.arquivo};${res.FORNECEDOR};${res.CNPJ_FORNECEDOR};${res.DATA_EMISSAO};${res.VALOR_BRUTO};${res.APROVADO_POR};${res.risco_score};${res.nivel_risco};${anomaliasTexto}`;
     }).join("\n");
 
     const blob = new Blob(["\ufeff" + headers + rows], { type: 'text/csv;charset=utf-8;' });
@@ -74,11 +73,7 @@ function App() {
           </p>
         </label>
         
-        <button 
-          className="btn-audit" 
-          onClick={handleUpload} 
-          disabled={loading || !file}
-        >
+        <button className="btn-audit" onClick={handleUpload} disabled={loading || !file}>
           {loading ? "Processando motor de IA..." : "Iniciar Auditoria"}
         </button>
       </div>
@@ -88,7 +83,7 @@ function App() {
           <div className="results-header">
             <div>
               <h2>Relatório de Auditoria</h2>
-              <p className="subtitle">{results.length} documentos analisados pelo sistema híbrido</p>
+              <p className="subtitle">{results.length} documentos analisados pelo sistema híbrido (Llama 3 + Fallback)</p>
             </div>
             <button className="btn-export-premium" onClick={exportToCSV}>
               <span>📥</span> Exportar para Power BI
@@ -103,8 +98,8 @@ function App() {
                   <th>Fornecedor / CNPJ</th>
                   <th>Emissão</th>
                   <th>Valor Bruto</th>
-                  <th>Aprovador</th>
-                  <th>Status de Risco</th>
+                  <th>Grau de Risco</th>
+                  <th>Status / Anomalias</th>
                 </tr>
               </thead>
               <tbody>
@@ -119,18 +114,31 @@ function App() {
                     </td>
                     <td>{res.DATA_EMISSAO}</td>
                     <td className="value-cell">{res.VALOR_BRUTO}</td>
-                    <td>👤 {res.APROVADO_POR}</td>
-                   <td title={res.anomalias !== "[]" ? res.anomalias : "Nenhuma anomalia detectada"}>
-                 {res.anomalias === "[]" ? (
-                 <span className="status-badge limpo">✔️ Limpo</span>
+                    
+           
+                    <td>
+                      <span className={`risk-badge ${res.nivel_risco?.toLowerCase()}`}>
+                        {res.nivel_risco} ({res.risco_score})
+                      </span>
+                    </td>
+
+                    <td title={res.anomalias.map(a => a.anomalia).join(", ")}>
+                      {res.anomalias.length === 0 ? (
+                        <span className="status-badge limpo">✔️ Limpo</span>
                       ) : (
-                   <div className="status-container">
-                   <span className="status-badge atencao">⚠️ Atenção</span>
-       
-                  <p className="anomaly-text">{res.anomalias.replace(/[\[\]']/g, '')}</p>
-                 </div>
-                   )}
-                  </td>
+                        <div className="status-container">
+                          <span className="status-badge atencao">⚠️ Atenção</span>
+                          <p className="anomaly-text">
+                            {res.anomalias.map((a, index) => (
+                              <span key={index}>
+                                • {a.anomalia}
+                                <br />
+                              </span>
+                            ))}
+                          </p>
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

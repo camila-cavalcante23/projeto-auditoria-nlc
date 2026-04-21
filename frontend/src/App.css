@@ -257,3 +257,39 @@ td {
 .audit-table tr:has(.atencao) {
   background-color: #ffffff;
 }
+
+.risk-badge {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 0.8rem;
+  display: inline-block;
+}
+
+.risk-badge.alto { 
+  background-color: #fee2e2; 
+  color: #b91c1c; 
+  border: 1px solid #f87171; 
+}
+
+.risk-badge.médio { 
+  background-color: #fef3c7; 
+  color: #b45309; 
+  border: 1px solid #fbbf24; 
+}
+
+.risk-badge.baixo { 
+  background-color: #d1fae5; 
+  color: #047857; 
+  border: 1px solid #34d399; 
+}
+
+.vendor-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.vendor-cnpj {
+  font-size: 0.75rem;
+  color: #666;
+}
