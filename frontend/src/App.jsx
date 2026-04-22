@@ -16,7 +16,7 @@ function App() {
     formData.append('file', file);
 
     try {
-      const response = await axios.post('http://127.0.0.1:8000/processar', formData);
+      const response = await axios.post('https://projeto-auditoria-nlc.onrender.com/processar', formData);
 
       if (response.data) {
         setResults(response.data.resultados || []);
