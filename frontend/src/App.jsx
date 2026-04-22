@@ -17,7 +17,7 @@ function App() {
 
     try {
       const response = await axios.post('https://projeto-auditoria-nlc.onrender.com/processar', formData);
-
+      
       if (response.data) {
         setResults(response.data.resultados || []);
         setLogAuditoria(response.data.log_auditoria || []); 
