@@ -63,4 +63,4 @@ Depois, acesse a pasta `/frontend`, instale as dependências com `npm install` e
 ## 👩‍💻 Autor
 
 **Camila Paiva**  
-Software Developer & Researcher
+Software Developer
