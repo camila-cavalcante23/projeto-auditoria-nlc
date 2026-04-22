@@ -106,7 +106,7 @@ class AuditService:
         return flags
     
 
-    # NOVO: CÁLCULO DE RISCO
+    # CÁLCULO DE RISCO
     def calcular_risco(self, flags):
         score = 0
 
@@ -123,7 +123,7 @@ class AuditService:
         if score >= 70:
             nivel = "ALTO"
         elif score >= 30:
-            nivel = "MÉDIO"
+            nivel = "MEDIO"
         else:
             nivel = "BAIXO"
 

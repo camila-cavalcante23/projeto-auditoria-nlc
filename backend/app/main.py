@@ -18,8 +18,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 LIMITE_IA = 100 
+PROMPT_VERSION = "v1.0" 
 
 @app.post("/processar")
 async def processar_documentos(file: UploadFile = File(...)):
@@ -31,6 +31,13 @@ async def processar_documentos(file: UploadFile = File(...)):
     try:
         content = await file.read()
 
+        # Segurança 
+        if not file.filename.endswith(('.zip', '.txt')):
+            raise HTTPException(status_code=400, detail="Formato não suportado")
+
+        if len(content) > 10 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="Arquivo muito grande")
+
         # CASO 1: ZIP
         if file.filename.endswith('.zip'):
             with zipfile.ZipFile(io.BytesIO(content)) as z:
@@ -41,9 +48,6 @@ async def processar_documentos(file: UploadFile = File(...)):
         # CASO 2: TXT
         elif file.filename.endswith('.txt'):
             arquivos_para_processar.append((file.filename, content))
-        
-        else:
-            raise HTTPException(status_code=400, detail="Formato não suportado. Envie .zip ou .txt")
 
         print(f"--- Iniciando processamento de {len(arquivos_para_processar)} arquivo(s) ---")
 
@@ -51,7 +55,7 @@ async def processar_documentos(file: UploadFile = File(...)):
             
             texto, erro = ler_texto_seguro(conteudo_binario)
             
-         
+            # ERRO DE ENCODING + ANOMALIA
             if erro: 
                 print(f"Erro em {nome_arquivo}: {erro}")
                 
@@ -59,12 +63,19 @@ async def processar_documentos(file: UploadFile = File(...)):
                     "arquivo": nome_arquivo,
                     "erro": erro,
                     "status_processamento": "ERRO",
-                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+                    "anomalias": [{
+                        "anomalia": "Arquivo não processável",
+                        "confianca": "Médio",
+                        "evidencia": erro
+                    }],
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "prompt_version": PROMPT_VERSION
                 }
+
                 resultados_finais.append(registro_erro)
                 continue
 
-          
+            # IA ou fallback
             if contador_ia < LIMITE_IA:
                 print(f"Usando IA para {nome_arquivo}")
                 dados_extraidos = extrair_dados_com_ia(texto)
@@ -72,13 +83,12 @@ async def processar_documentos(file: UploadFile = File(...)):
                 origem = "IA"
             else:
                 print(f"Usando fallback para {nome_arquivo}")
-                dados_extraidos = extrair_dados_com_ia(texto) 
+                dados_extraidos = extrair_dados_com_ia(texto)  
                 origem = "FALLBACK"
 
             if dados_extraidos:
                 anomalias = audit.detectar_anomalias(dados_extraidos, texto)
 
-              
                 score, nivel = audit.calcular_risco(anomalias)
                 
                 registro = {
@@ -88,9 +98,9 @@ async def processar_documentos(file: UploadFile = File(...)):
                     "anomalias": anomalias, 
                     "risco_score": score,
                     "nivel_risco": nivel,
-
                     "status_processamento": "SUCESSO",
-                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "prompt_version": PROMPT_VERSION  
                 }
 
                 resultados_finais.append(registro)
@@ -98,13 +108,30 @@ async def processar_documentos(file: UploadFile = File(...)):
             else:
                 print(f"Falha na extração para: {nome_arquivo}")
 
+        # CSV principal
         csv_data = gerar_csv_resultados(resultados_finais)
+
+  
+        log_auditoria = []
+
+        for r in resultados_finais:
+            if r.get("anomalias"):
+                for a in r["anomalias"]:
+                    log_auditoria.append({
+                        "arquivo": r.get("arquivo"),
+                        "timestamp": r.get("timestamp"),
+                        "regra": a.get("anomalia"),
+                        "evidencia": a.get("evidencia"),
+                        "confianca": a.get("confianca"),
+                        "prompt_version": r.get("prompt_version")
+                    })
 
         return {
             "mensagem": "Processamento concluído",
             "total": len(resultados_finais),
-            "ia_utilizada": contador_ia,  
+            "ia_utilizada": contador_ia,
             "resultados": resultados_finais,
+            "log_auditoria": log_auditoria,  
             "csv_preview": csv_data[:500]
         }
 

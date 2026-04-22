@@ -8,6 +8,20 @@ load_dotenv()
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
+CAMPOS_PADRAO = [
+    "TIPO_DOCUMENTO",
+    "NUMERO_DOCUMENTO",
+    "DATA_EMISSAO",
+    "FORNECEDOR",
+    "CNPJ_FORNECEDOR",
+    "VALOR_BRUTO",
+    "DATA_PAGAMENTO", 
+    "APROVADO_POR",
+    "STATUS",
+    "HASH_VERIFICACAO"
+]
+
+
 def extrair_dados_com_ia(texto_documento):
     tentativas = 3
 
@@ -23,7 +37,9 @@ def extrair_dados_com_ia(texto_documento):
                     {
                         "role": "user",
                         "content": f"""
-Extraia os dados desta nota fiscal e retorne no seguinte formato JSON:
+Extraia os dados desta nota fiscal e retorne no seguinte formato JSON.
+
+Se algum campo não estiver presente, retorne exatamente: "não extraído".
 
 {{
 "TIPO_DOCUMENTO": "",
@@ -48,12 +64,19 @@ Texto:
 
             conteudo = response.choices[0].message.content.strip()
 
-            
+            # Extrair JSON 
             inicio = conteudo.find("{")
             fim = conteudo.rfind("}") + 1
             json_str = conteudo[inicio:fim]
 
-            return json.loads(json_str)
+            dados = json.loads(json_str)
+
+            # GARANTIR TODOS OS CAMPOS
+            for campo in CAMPOS_PADRAO:
+                if campo not in dados or not dados[campo]:
+                    dados[campo] = "não extraído"
+
+            return dados
 
         except Exception as e:
             print(f"Erro na IA (tentativa {tentativa+1}): {e}")
@@ -61,23 +84,17 @@ Texto:
 
     print("IA Indisponível. Usando Extração de Contingência...")
 
-
+    # FALLBACK 
     linhas = texto_documento.split('\n')
     dados_brutos = {}
+
     for linha in linhas:
         if ':' in linha:
             chave, valor = linha.split(':', 1)
             dados_brutos[chave.strip()] = valor.strip()
 
+    # RETORNO PADRÃO COM "não extraído"
     return {
-        "TIPO_DOCUMENTO": dados_brutos.get("TIPO_DOCUMENTO", "NOTA_FISCAL"),
-        "NUMERO_DOCUMENTO": dados_brutos.get("NUMERO_DOCUMENTO", "EXTRAÇÃO_MANUAL"),
-        "DATA_EMISSAO": dados_brutos.get("DATA_EMISSAO", "01/01/2026"),
-        "FORNECEDOR": dados_brutos.get("FORNECEDOR", "Fornecedor não identificado"),
-        "CNPJ_FORNECEDOR": dados_brutos.get("CNPJ_FORNECEDOR", "00.000.000/0001-00"),
-        "VALOR_BRUTO": dados_brutos.get("VALOR_BRUTO", "R$ 0,00"),
-        "DATA_PAGAMENTO": dados_brutos.get("DATA_PAGAMENTO", "01/01/2026"),
-        "APROVADO_POR": dados_brutos.get("APROVADO_POR", "REVISÃO MANUAL"),
-        "STATUS": dados_brutos.get("STATUS", "PENDENTE"),
-        "HASH_VERIFICACAO": dados_brutos.get("HASH_VERIFICACAO", "N/A")
+        campo: dados_brutos.get(campo, "não extraído")
+        for campo in CAMPOS_PADRAO
     }
