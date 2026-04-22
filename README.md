@@ -48,7 +48,6 @@ A aplicação valida padrões críticos conforme o briefing:
 
 ## ▶️ Como Executar Localmente
 1. **Clone o repositório:**
-   ```bash
    git clone [https://github.com/camila-cavalcante23/projeto-auditoria-nlc.git](https://github.com/camila-cavalcante23/projeto-auditoria-nlc.git)
 
 
